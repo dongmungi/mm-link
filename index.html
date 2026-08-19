@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>MM LINK</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+
+      font-family:
+        Arial,
+        "Noto Sans KR",
+        sans-serif;
+
+      background: #f5f7fb;
+      color: #111827;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: min(600px, calc(100% - 32px));
+    }
+
+    .logo {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: -1.5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #6b7280;
+      margin-top: 8px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 24px;
+
+      box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    .label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      height: 50px;
+
+      padding: 0 15px;
+
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+
+      outline: none;
+
+      font-size: 15px;
+    }
+
+    input:focus {
+      border-color: #111827;
+    }
+
+    button {
+      height: 50px;
+
+      padding: 0 20px;
+
+      border: 0;
+      border-radius: 12px;
+
+      background: #111827;
+      color: #fff;
+
+      font-size: 14px;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      white-space: nowrap;
+    }
+
+    button:hover {
+      opacity: .9;
+    }
+
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .result {
+      display: none;
+
+      margin-top: 20px;
+      padding: 16px;
+
+      border-radius: 14px;
+
+      background: #f3f4f6;
+    }
+
+    .result-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .result-row input {
+      background: #fff;
+    }
+
+    .copy-btn {
+      background: #374151;
+    }
+
+    .status {
+      margin-top: 15px;
+
+      text-align: center;
+
+      color: #6b7280;
+
+      font-size: 13px;
+    }
+
+    .redirect {
+      display: none;
+
+      text-align: center;
+    }
+
+    .redirect h2 {
+      margin: 0 0 8px;
+    }
+
+    .redirect p {
+      margin: 0;
+
+      color: #6b7280;
+    }
+
+    .error {
+      color: #dc2626;
+    }
+
+    footer {
+      margin-top: 20px;
+
+      text-align: center;
+
+      color: #9ca3af;
+
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+
+<body>
+
+  <main class="container">
+
+    <div class="logo">
+      MM LINK
+    </div>
+
+    <div class="subtitle">
+      긴 링크를 짧고 간단하게
+    </div>
+
+
+    <!-- 링크 생성 -->
+
+    <section
+      class="card"
+      id="createCard"
+    >
+
+      <label class="label">
+        단축할 URL
+      </label>
+
+      <div class="input-row">
+
+        <input
+          id="urlInput"
+          type="url"
+          placeholder="https://example.com"
+          autocomplete="off"
+        >
+
+        <button id="shortenBtn">
+          단축하기
+        </button>
+
+      </div>
+
+
+      <!-- 결과 -->
+
+      <div
+        class="result"
+        id="result"
+      >
+
+        <label class="label">
+          단축된 링크
+        </label>
+
+        <div class="result-row">
+
+          <input
+            id="shortUrl"
+            readonly
+          >
+
+          <button
+            class="copy-btn"
+            id="copyBtn"
+          >
+            복사
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div
+        class="status"
+        id="status"
+      >
+        Firebase 연결 중...
+      </div>
+
+    </section>
+
+
+    <!-- 리다이렉트 -->
+
+    <section
+      class="card redirect"
+      id="redirectCard"
+    >
+
+      <h2>
+        링크를 확인하는 중...
+      </h2>
+
+      <p id="redirectStatus">
+        잠시만 기다려주세요.
+      </p>
+
+    </section>
+
+
+    <footer>
+      © MM STUDIO
+    </footer>
+
+  </main>
+
+
+  <script type="module">
+
+    /*
+     * Firebase SDK
+     */
+
+    import {
+      initializeApp
+    }
+    from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+
+
+    import {
+      getAuth,
+      signInAnonymously
+    }
+    from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
+
+
+    import {
+      getDatabase,
+      ref,
+      get,
+      set,
+      update
+    }
+    from
+      "https://www.gstatic.com/firebasejs/12.17.1/firebase-database.js";
+
+
+    /*
+     * Firebase 설정
+     */
+
+    const firebaseConfig = {
+
+      apiKey:
+        "AIzaSyAVs2VAxyp_OpFIwUYv4tF6IQgf-3zpyMs",
+
+      authDomain:
+        "mmlink-kr.firebaseapp.com",
+
+      projectId:
+        "mmlink-kr",
+
+      storageBucket:
+        "mmlink-kr.firebasestorage.app",
+
+      messagingSenderId:
+        "465080650167",
+
+      appId:
+        "1:465080650167:web:67b5737b0313f841d94032",
+
+      measurementId:
+        "G-D7G8DYPZ97"
+
+    };
+
+
+    /*
+     * Firebase 초기화
+     */
+
+    const app =
+      initializeApp(firebaseConfig);
+
+    const auth =
+      getAuth(app);
+
+    const db =
+      getDatabase(app);
+
+
+    /*
+     * DOM
+     */
+
+    const createCard =
+      document.getElementById(
+        "createCard"
+      );
+
+    const redirectCard =
+      document.getElementById(
+        "redirectCard"
+      );
+
+    const urlInput =
+      document.getElementById(
+        "urlInput"
+      );
+
+    const shortenBtn =
+      document.getElementById(
+        "shortenBtn"
+      );
+
+    const result =
+      document.getElementById(
+        "result"
+      );
+
+    const shortUrl =
+      document.getElementById(
+        "shortUrl"
+      );
+
+    const copyBtn =
+      document.getElementById(
+        "copyBtn"
+      );
+
+    const status =
+      document.getElementById(
+        "status"
+      );
+
+    const redirectStatus =
+      document.getElementById(
+        "redirectStatus"
+      );
+
+
+    /*
+     * 랜덤 코드
+     */
+
+    function generateCode(length = 6) {
+
+      const chars =
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+      let code = "";
+
+      for (
+        let i = 0;
+        i < length;
+        i++
+      ) {
+
+        code +=
+          chars[
+            Math.floor(
+              Math.random() *
+              chars.length
+            )
+          ];
+
+      }
+
+      return code;
+
+    }
+
+
+    /*
+     * URL 검사
+     */
+
+    function isValidUrl(value) {
+
+      try {
+
+        const url =
+          new URL(value);
+
+        return (
+          url.protocol === "http:" ||
+          url.protocol === "https:"
+        );
+
+      } catch {
+
+        return false;
+
+      }
+
+    }
+
+
+    /*
+     * 익명 로그인
+     */
+
+    async function login() {
+
+      const result =
+        await signInAnonymously(auth);
+
+      console.log(
+        "Firebase UID:",
+        result.user.uid
+      );
+
+    }
+
+
+    /*
+     * 사용 가능한 코드 만들기
+     */
+
+    async function createUniqueCode() {
+
+      while (true) {
+
+        const code =
+          generateCode(6);
+
+        const snapshot =
+          await get(
+            ref(
+              db,
+              "links/" + code
+            )
+          );
+
+
+        if (!snapshot.exists()) {
+
+          return code;
+
+        }
+
+      }
+
+    }
+
+
+    /*
+     * 링크 생성
+     */
+
+    shortenBtn.addEventListener(
+      "click",
+      async () => {
+
+        const url =
+          urlInput.value.trim();
+
+
+        /*
+         * URL 검사
+         */
+
+        if (!isValidUrl(url)) {
+
+          status.textContent =
+            "올바른 URL을 입력해주세요.";
+
+          urlInput.focus();
+
+          return;
+
+        }
+
+
+        shortenBtn.disabled =
+          true;
+
+        status.textContent =
+          "링크 생성 중...";
+
+
+        try {
+
+          /*
+           * 코드 생성
+           */
+
+          const code =
+            await createUniqueCode();
+
+
+          /*
+           * 현재 사용자
+           */
+
+          const user =
+            auth.currentUser;
+
+
+          /*
+           * DB 저장
+           */
+
+          await set(
+            ref(
+              db,
+              "links/" + code
+            ),
+            {
+
+              url: url,
+
+              ownerUid:
+                user
+                  ? user.uid
+                  : null,
+
+              clicks: 0,
+
+              createdAt:
+                Date.now()
+
+            }
+          );
+
+
+          /*
+           * 최종 주소
+           */
+
+          const short =
+            window.location.origin +
+            "/" +
+            code;
+
+
+          shortUrl.value =
+            short;
+
+
+          result.style.display =
+            "block";
+
+
+          status.textContent =
+            "링크가 생성되었습니다.";
+
+        } catch (error) {
+
+          console.error(error);
+
+          status.textContent =
+            "링크 생성에 실패했습니다.";
+
+        }
+
+
+        shortenBtn.disabled =
+          false;
+
+      }
+    );
+
+
+    /*
+     * 복사 (HTTPS 및 HTTP / 인앱 브라우저 대응)
+     */
+
+    copyBtn.addEventListener(
+      "click",
+      async () => {
+
+        try {
+
+          if (navigator.clipboard && window.isSecureContext) {
+
+            await navigator.clipboard.writeText(
+              shortUrl.value
+            );
+
+          } else {
+
+            shortUrl.select();
+
+            shortUrl.setSelectionRange(0, 99999);
+
+            const successful =
+              document.execCommand("copy");
+
+            if (!successful) {
+
+              throw new Error("Copy failed");
+
+            }
+
+          }
+
+
+          copyBtn.textContent =
+            "복사됨";
+
+
+          setTimeout(
+            () => {
+
+              copyBtn.textContent =
+                "복사";
+
+            },
+            1500
+          );
+
+        } catch (error) {
+
+          console.error(error);
+
+          status.textContent =
+            "복사에 실패했습니다.";
+
+        }
+
+      }
+    );
+
+
+    /*
+     * Enter로 단축
+     */
+
+    urlInput.addEventListener(
+      "keydown",
+      event => {
+
+        if (
+          event.key === "Enter"
+        ) {
+
+          shortenBtn.click();
+
+        }
+
+      }
+    );
+
+
+    /*
+     * URL 뒤의 코드 확인
+     */
+
+    async function checkShortLink() {
+
+      const path =
+        window.location.pathname;
+
+
+      /*
+       * 홈이면 종료
+       */
+
+      if (
+        path === "/" ||
+        path === ""
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+       * 앞쪽 "/" 제거
+       */
+
+      const code =
+        path
+          .replace(/^\/+/, "")
+          .split("/")[0];
+
+
+      if (!code) {
+
+        return;
+
+      }
+
+
+      /*
+       * 생성 화면 숨김
+       */
+
+      createCard.style.display =
+        "none";
+
+      redirectCard.style.display =
+        "block";
+
+
+      try {
+
+        /*
+         * Firebase 검색
+         */
+
+        const snapshot =
+          await get(
+            ref(
+              db,
+              "links/" + code
+            )
+          );
+
+
+        /*
+         * 링크 없음
+         */
+
+        if (
+          !snapshot.exists()
+        ) {
+
+          redirectCard.innerHTML = `
+
+            <h2 class="error">
+              링크를 찾을 수 없습니다.
+            </h2>
+
+            <p>
+              잘못된 링크이거나
+              삭제된 링크입니다.
+            </p>
+
+          `;
+
+          return;
+
+        }
+
+
+        const data =
+          snapshot.val();
+
+
+        /*
+         * 클릭 수 증가
+         */
+
+        const currentClicks =
+          Number(
+            data.clicks || 0
+          );
+
+
+        await update(
+          ref(
+            db,
+            "links/" + code
+          ),
+          {
+
+            clicks:
+              currentClicks + 1
+
+          }
+        );
+
+
+        /*
+         * 이동
+         */
+
+        redirectStatus.textContent =
+          "이동 중...";
+
+
+        window.location.replace(
+          data.url
+        );
+
+      } catch (error) {
+
+        console.error(error);
+
+        redirectCard.innerHTML = `
+
+          <h2 class="error">
+            오류가 발생했습니다.
+          </h2>
+
+          <p>
+            잠시 후 다시 시도해주세요.
+          </p>
+
+        `;
+
+      }
+
+    }
+
+
+    /*
+     * 실행
+     */
+
+    try {
+
+      await login();
+
+      await checkShortLink();
+
+      if (
+        window.location.pathname === "/" ||
+        window.location.pathname === ""
+      ) {
+
+        status.textContent =
+          "준비 완료";
+
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      status.textContent =
+        "Firebase 연결에 실패했습니다.";
+
+    }
+
+  </script>
+
+</body>
+</html>
