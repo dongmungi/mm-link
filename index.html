@@ -600,12 +600,17 @@
 
 
           /*
-           * 최종 주소
+           * 최종 주소 (GitHub Pages 레포지토리 하위 경로 대응)
            */
 
+          const baseUrl =
+            window.location.href
+              .split("?")[0]
+              .split("#")[0];
+
           const short =
-            window.location.origin +
-            "/" +
+            baseUrl +
+            "?c=" +
             code;
 
 
@@ -719,38 +724,23 @@
 
 
     /*
-     * URL 뒤의 코드 확인
+     * 쿼리 파라미터(?c=코드) 확인
      */
 
     async function checkShortLink() {
 
-      const path =
-        window.location.pathname;
-
-
-      /*
-       * 홈이면 종료
-       */
-
-      if (
-        path === "/" ||
-        path === ""
-      ) {
-
-        return;
-
-      }
-
-
-      /*
-       * 앞쪽 "/" 제거
-       */
+      const urlParams =
+        new URLSearchParams(
+          window.location.search
+        );
 
       const code =
-        path
-          .replace(/^\/+/, "")
-          .split("/")[0];
+        urlParams.get("c");
 
+
+      /*
+       * 코드가 없으면 기본 생성 화면으로 유지
+       */
 
       if (!code) {
 
@@ -882,10 +872,12 @@
 
       await checkShortLink();
 
-      if (
-        window.location.pathname === "/" ||
-        window.location.pathname === ""
-      ) {
+      const urlParams =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      if (!urlParams.get("c")) {
 
         status.textContent =
           "준비 완료";
