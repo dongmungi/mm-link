@@ -600,17 +600,12 @@
 
 
           /*
-           * 최종 주소 (GitHub Pages 레포지토리 하위 경로 대응)
+           * 깔끔한 주소 (http://mmlink.kro.kr/코드)
            */
 
-          const baseUrl =
-            window.location.href
-              .split("?")[0]
-              .split("#")[0];
-
           const short =
-            baseUrl +
-            "?c=" +
+            window.location.origin +
+            "/" +
             code;
 
 
@@ -724,25 +719,29 @@
 
 
     /*
-     * 쿼리 파라미터(?c=코드) 확인
+     * 경로(/코드) 확인
      */
 
     async function checkShortLink() {
 
-      const urlParams =
-        new URLSearchParams(
-          window.location.search
-        );
+      const path =
+        window.location.pathname;
 
       const code =
-        urlParams.get("c");
+        path
+          .replace(/^\/+/, "")
+          .split("/")[0];
 
 
       /*
-       * 코드가 없으면 기본 생성 화면으로 유지
+       * 홈 접속이거나 시스템 파일 경로면 중단
        */
 
-      if (!code) {
+      if (
+        !code ||
+        code === "index.html" ||
+        code === "404.html"
+      ) {
 
         return;
 
@@ -872,12 +871,16 @@
 
       await checkShortLink();
 
-      const urlParams =
-        new URLSearchParams(
-          window.location.search
-        );
+      const path =
+        window.location.pathname
+          .replace(/^\/+/, "")
+          .split("/")[0];
 
-      if (!urlParams.get("c")) {
+      if (
+        !path ||
+        path === "index.html" ||
+        path === "404.html"
+      ) {
 
         status.textContent =
           "준비 완료";
